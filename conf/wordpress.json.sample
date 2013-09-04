@@ -1,0 +1,7 @@
+{
+	"basedir": "/web/sites",
+	"suffix": ".dev",
+	"apachedir": "/etc/apache2/sites-enabled/",
+	"dbuser": "root",
+	"dbpass": ""
+}
