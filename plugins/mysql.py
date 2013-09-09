@@ -5,12 +5,9 @@ class Plugin(object):
 		self.context = context
 		self.connections = {}
 		
-		print 'Startup'
 		super(Plugin, self).__init__()
 	
 	def cleanup(self, success):
-		print 'Cleanup'
-		
 		for key, connection in self.connections.items():
 			connection.close()
 			self.connections.pop(key)

@@ -9,8 +9,9 @@ RESET = '\033[m\n'
 
 from optparse import OptionParser
 from shutil import rmtree
-import os, sys, simplejson
 from subprocess import call
+from datetime import datetime
+import os, sys, simplejson
 
 class TerraException(Exception):
 	pass
@@ -35,29 +36,83 @@ class TerraContext(object):
 			self.warn('Config file for skeleton not found')
 			self._config = {}
 		
+		if not os.path.exists(
+			os.path.join(
+				os.path.dirname(__file__),
+				'logs'
+			)
+		):
+			os.mkdir(
+				os.path.join(
+					os.path.dirname(__file__),
+					'logs'
+				)
+			)
+		
+		if not os.path.exists(
+			os.path.join(
+				os.path.dirname(__file__),
+				'logs', template
+			)
+		):
+			os.mkdir(
+				os.path.join(
+					os.path.dirname(__file__),
+					'logs', template
+				)
+			)
+		
 		self._dirs = []
 		self._files = []
 		self._plugins = {}
+		self._logfile = open(
+			os.path.join(
+				os.path.dirname(__file__),
+				'logs',
+				template,
+				datetime.now().strftime('%b-%d-%y_%H%M') + '.log'
+			),
+			'w'
+		)
+	
+	def log(self, event, *text):
+		if any(text):
+			self._logfile.write(
+				'\t'.join(
+					(
+						datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+						event,
+						' '.join([t for t in text if t])
+					)
+				)
+			)
+			
+			self._logfile.write('\n')
 	
 	def header(self, *text):
 		if any(text):
 			sys.stdout.write(HEADER + ' '.join(t for t in text if t) + RESET)
+			self.log('INFO', *text)
 	
 	def info(self, *text):
 		if any(text):
 			sys.stdout.write(OKBLUE + ' '.join(t for t in text if t) + RESET)
+			self.log('INFO', *text)
 	
 	def success(self, *text):
 		if any(text):
 			sys.stdout.write(OKGREEN + ' '.join(t for t in text if t) + RESET)
+			self.log('SUCCESS', *text)
 	
 	def warn(self, *text):
 		if any(text):
 			sys.stdout.write(WARNING + ' '.join(t for t in text if t) + RESET)
+			self.log('WARN', *text)
 	
 	def error(self, *text):
 		if any(text):
 			sys.stdout.write(FAIL + ' '.join(t for t in text if t) + RESET)
+			self.log('ERROR', *text)
 	
 	def ask(self, question, required = True, default = None):
 		retrying = False
@@ -66,7 +121,7 @@ class TerraContext(object):
 			if retrying:
 				prompt = 'An answer is required. %s: ' % question
 			elif default:
-				prompt = question + ' (defaults to %s):' % default
+				prompt = question + ' (defaults to %s): ' % default
 			else:
 				prompt = question + (not required and ' (optional)' or '') + ': '
 			
@@ -89,18 +144,19 @@ class TerraContext(object):
 		if not dirname:
 			return None
 		
-		if os.path.exists(dirname):
+		creating = not os.path.exists(dirname)
+		if not creating:
 			self.warn('Directory', dirname, 'already exists.')
 			return dirname
-		else:
-			self.success('Created directory %s.' % dirname)
 		
 		try:
 			os.mkdir(dirname)
 			self._dirs.append(os.path.abspath(dirname))
-		except:
+		except Exception, ex:
+			self.error('Unable to create directory %s: %s.' % (dirname, ex))
 			return None
 		else:
+			self.success('Created directory %s.' % dirname)
 			return dirname
 	
 	def save(self, filename, data):
@@ -130,7 +186,6 @@ class TerraContext(object):
 				raise TerraException('Plugin with name "%s" not found' % name)
 			else:
 				klass = getattr(getattr(module, name), 'Plugin')
-				print klass
 				self._plugins[name] = klass(self, **kwargs)
 		
 		return self._plugins[name]
