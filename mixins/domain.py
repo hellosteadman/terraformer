@@ -6,7 +6,7 @@ class DomainMixin(object):
 			return None, None
 		
 		suffix = context.config('suffix', '.com')
-		prefix = '.'.join(domain.split('.')[:-1])
+		prefix = domain.split('.')[0]
 		alias = prefix + suffix
 		alias = context.ask('Domain name alias', default = alias)
 		return domain, prefix, alias
